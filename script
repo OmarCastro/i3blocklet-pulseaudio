@@ -1,0 +1,57 @@
+#!/bin/bash
+# Copyright (C) 2019 Omar Castro <omar.castro.360@gmail.com>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#------------------------------------------------------------------------
+
+
+# The first parameter sets the step to change the volume by, and units to display
+# uses "step" env variable as fallback, which can be defined on the block configuration
+# This may be in in % or dB (eg. 5% or 3dB), also, 
+STEP="${1:-${step:-5%}}"
+#------------------------------------------------------------------------
+
+case $BLOCK_BUTTON in
+  1) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-left-click ) > /dev/null ;;
+  3) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-right-click ) > /dev/null ;;
+  4) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-wheel-up "$STEP" ) > /dev/null ;;
+  5) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-wheel-down "$STEP" ) > /dev/null ;;
+esac
+
+
+SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
+DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
+DEFAULT_SINK_INFO="$(echo "$SINK_LIST" | sed -n "/^Sink #${DEFAULT_SINK}$/,/^\s*Base Volume:/p")"
+
+
+volume() {
+	echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Volume:' |  head -n 1 | case $STEP in
+		*dB )  sed -e 's|.* \(\-\?[0-9][0-9]*,[0-9][0-9]*\) dB.*|\1 dB|' -e 's|.* -inf dB.*|OFF|';;
+		*%)    sed -e 's|.* \([0-9][0-9]*\)%.*|\1%|' -e 's|^0%|OFF|'	;;
+	esac
+   
+}
+
+isMute(){
+  echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Mute:'  | sed -e 's,.*: \([a-z]*\).*,\1,' 
+}
+
+#------------------------------------------------------------------------
+
+
+case "$(isMute)" in
+  yes ) printf " MUTE\nMUTE" ;;
+  * ) volume | awk '{print ($0 == "OFF") ? " "$0:" "$0}1' ;;
+esac

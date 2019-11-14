@@ -1,0 +1,37 @@
+#! /bin/sh
+# Copyright (C) 2019 Omar Castro <omar.castro.360@gmail.com>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#------------------------------------------------------------------------
+
+
+# The first parameter sets the step to change the volume by
+STEP="${1:-5%}"
+
+SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
+DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
+
+CONTENT="$(echo "$SINK_LIST" | sed -e 's/^\t/  /g' -e 's/,\s\s*/,\n\t  /g')"
+let "WIDTH = $(wc -L <<< "$CONTENT") + 5"
+OPTION_SELECTED=$(echo "$CONTENT" \
+  | tr '\n' '\r' \
+  | sed -e 's/\rSink/\nSink/g' -e "s|Sink #$DEFAULT_SINK\r|<b><u>Sink #$DEFAULT_SINK (default)</u></b>\r|g" \
+  | rofi -dmenu -eh 14 -theme "omar-message" -m -3 -width -$WIDTH -lines 2 -markup-rows -select '(default)'  \
+         -theme-str '#window {anchor:southwest;}' \
+  | sed -e 's/.*Sink #\([0-9]*\).*/\1/g')
+
+if ! [[ -z "$OPTION_SELECTED" ]]; then
+    pacmd set-default-sink "$OPTION_SELECTED"
+fi 
