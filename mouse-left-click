@@ -16,9 +16,13 @@
 
 #------------------------------------------------------------------------
 
-
-# The first parameter sets the step to change the volume by
-STEP="${1:-5%}"
+ROFI_OPTIONAL_ARGS=()
+if ! [[ -z "$rofi_theme" ]]; then
+	ROFI_OPTIONAL_ARGS+=( -theme "$rofi_theme" )
+fi
+if ! [[ -z "$rofi_window_anchor" ]]; then
+	ROFI_OPTIONAL_ARGS+=( -theme-str '#window {anchor:'"$rofi_window_anchor"';}' )
+fi
 
 SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
 DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
@@ -28,8 +32,7 @@ let "WIDTH = $(wc -L <<< "$CONTENT") + 5"
 OPTION_SELECTED=$(echo "$CONTENT" \
   | tr '\n' '\r' \
   | sed -e 's/\rSink/\nSink/g' -e "s|Sink #$DEFAULT_SINK\r|<b><u>Sink #$DEFAULT_SINK (default)</u></b>\r|g" \
-  | rofi -dmenu -eh 14 -theme "omar-message" -m -3 -width -$WIDTH -lines 2 -markup-rows -select '(default)'  \
-         -theme-str '#window {anchor:southwest;}' \
+  | rofi -dmenu -eh 14 -m -3 -width -$WIDTH -lines 2 -markup-rows -select '(default)' "${ROFI_OPTIONAL_ARGS[@]}"  \
   | sed -e 's/.*Sink #\([0-9]*\).*/\1/g')
 
 if ! [[ -z "$OPTION_SELECTED" ]]; then
