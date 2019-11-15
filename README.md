@@ -2,13 +2,16 @@
 i3 blocket that shows that controls the volume using pulse audio
  
 
-# Block configuration
+# Screenshots 
 
 | Screenshot                        | Description  |
 | --------------------------------- | -------------|
 | ![mute](screenshots/mute.png)     | Shows when sink is mute, can be toggled with mouse right click button | 
 | ![off](screenshots/off.png)       | Shows when volume is zero and is not mute     | 
 | ![normal](screenshots/normal.png) | shows the volume percentage                   |  
+
+# Block configuration
+
 
 ```sh
 
