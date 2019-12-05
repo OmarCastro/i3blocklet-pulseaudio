@@ -23,35 +23,51 @@
 STEP="${1:-${step:-5%}}"
 #------------------------------------------------------------------------
 
-case $BLOCK_BUTTON in
-  1) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-left-click ) > /dev/null ;;
-  3) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-right-click ) > /dev/null ;;
-  4) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-wheel-up "$STEP" ) > /dev/null ;;
-  5) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-wheel-down "$STEP" ) > /dev/null ;;
-esac
 
-
-SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
-DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
-DEFAULT_SINK_INFO="$(echo "$SINK_LIST" | sed -n "/^Sink #${DEFAULT_SINK}$/,/^\s*Base Volume:/p")"
-
-
-volume() {
-	echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Volume:' |  head -n 1 | case $STEP in
-		*dB )  sed -e 's|.* \(\-\?[0-9][0-9]*,[0-9][0-9]*\) dB.*|\1 dB|' -e 's|.* -inf dB.*|OFF|';;
-		*%)    sed -e 's|.* \([0-9][0-9]*\)%.*|\1%|' -e 's|^0%|OFF|'	;;
-	esac
-   
+handle_buttons(){
+  while read button; do
+    case "$button" in
+      1) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-left-click ) > /dev/null ;;
+      3) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-right-click ) > /dev/null ;;
+      4) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-wheel-up "$STEP" ) > /dev/null ;;
+      5) ( cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && setsid ./mouse-wheel-down "$STEP" ) > /dev/null ;;
+    esac
+  done
 }
 
-isMute(){
-  echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Mute:'  | sed -e 's,.*: \([a-z]*\).*,\1,' 
+tick(){
+  SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
+  DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
+  DEFAULT_SINK_INFO="$(echo "$SINK_LIST" | sed -n "/^Sink #${DEFAULT_SINK}$/,/^\s*Base Volume:/p")"
+
+
+  volume() {
+    echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Volume:' |  head -n 1 | case $STEP in
+      *dB )  sed -e 's|.* \(\-\?[0-9][0-9]*,[0-9][0-9]*\) dB.*|\1 dB|' -e 's|.* -inf dB.*|OFF|';;
+      *%)    sed -e 's|.* \([0-9][0-9]*\)%.*|\1%|' -e 's|^0%|OFF|'  ;;
+    esac
+     
+  }
+
+  isMute(){
+    echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Mute:'  | sed -e 's,.*: \([a-z]*\).*,\1,' 
+  }
+
+  #------------------------------------------------------------------------
+
+
+  case "$(isMute)" in
+    yes ) echo " MUTE" ;;
+    * ) volume | awk '{print ($0 == "OFF") ? " "$0:" "$0}0' ;;
+  esac
 }
 
-#------------------------------------------------------------------------
+printInfo(){
+  tick
+  while read line ; do
+    tick
+  done <  <(pactl subscribe | grep --line-buffered -E "sink|server")
+}
 
-
-case "$(isMute)" in
-  yes ) printf " MUTE\nMUTE" ;;
-  * ) volume | awk '{print ($0 == "OFF") ? " "$0:" "$0}1' ;;
-esac
+printInfo &
+handle_buttons
