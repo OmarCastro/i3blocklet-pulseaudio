@@ -38,13 +38,13 @@ handle_buttons(){
 tick(){
   # `pactl list sinks` shows sink properties with a mix of english language and local language
   # defined by LANG env var, so we unset the var to guarantee only one language is used, english
-  SINK_LIST="$(unset LANG; pactl list sinks | sed -n '/^Sink/,/^\s*Active Port:/p')"
-  DEFAULT_SINK=$(pacmd list-sinks | grep -m1 '* index:' | cut -b12-)
-  DEFAULT_SINK_INFO="$(echo "$SINK_LIST" | sed -n "/^Sink #${DEFAULT_SINK}$/,/^\s*Active Port:/p")"
+  SINK_LIST="$(unset LANG; pactl list sinks | sed -n '/^Sink/,/^\s*Active Port:/{ /^\s*Base Volume:/,/^\s*Active Port:/{ /^\s*Active Port:/p; d} ;p } ')"
+  DEFAULT_SINK=$(pactl info | grep -m1 -oP "Default Sink: \K.*")
+  DEFAULT_SINK_INFO="$(sed -n "/Name: ${DEFAULT_SINK}$/,/^\s*Active Port:/p" <<< "$SINK_LIST")"
 
 
   volume() {
-    echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Volume:' |  head -n 1 | case $STEP in
+    echo "$DEFAULT_SINK_INFO" | grep -m1 '^[[:space:]]Volume:' | case $STEP in
       *dB )  sed -e 's|.* \(\-\?[0-9][0-9]*,[0-9][0-9]*\) dB.*|\1 dB|' -e 's|.* -inf dB.*|OFF|';;
       *%)    sed -e 's|.* \([0-9][0-9]*\)%.*|\1%|' -e 's|^0%|OFF|'  ;;
     esac
@@ -52,22 +52,25 @@ tick(){
   }
 
   isMute(){
-    echo "$DEFAULT_SINK_INFO" | grep -m1 '^[[:space:]]Mute:'  | sed -e 's,.*: \([a-z]*\).*,\1,' 
+    grep -m1 -oP '^[[:space:]]Mute:\s*\K.*' <<< "$DEFAULT_SINK_INFO"
   }
 
-  case "$(echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Active Port:')" in
+  activePort(){
+    grep -m1 -oP '^[[:space:]]Active Port:\s*\K' <<< "$DEFAULT_SINK_INFO"
+  }
+
+  case `activePort` in
     *head* )  OFFICON="";  ONICON=""  ;;
     *hdmi* )  OFFICON="";  ONICON=""  ;;
     * )       OFFICON="";  ONICON=""  ;;
   esac
 
-  #------------------------------------------------------------------------
-
-
-  case "$(isMute)" in
-    yes ) echo "$OFFICON MUTE" ;;
-    * ) volume | awk '{print ($0 == "OFF") ? "'$OFFICON' "$0:"'$ONICON' "$0}0' ;;
-  esac
+  if [[ `isMute` == yes ]]; then
+    echo "$OFFICON MUTE"
+  else
+    VOL=`volume`
+    [[ $VOL == OFF ]] && echo "$OFFICON OFF" || echo "$ONICON $VOL"
+  fi
 }
 
 printInfo(){
