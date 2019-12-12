@@ -36,9 +36,11 @@ handle_buttons(){
 }
 
 tick(){
-  SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
-  DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
-  DEFAULT_SINK_INFO="$(echo "$SINK_LIST" | sed -n "/^Sink #${DEFAULT_SINK}$/,/^\s*Base Volume:/p")"
+  # `pactl list sinks` shows sink properties with a mix of english language and local language
+  # defined by LANG env var, so we unset the var to guarantee only one language is used, english
+  SINK_LIST="$(unset LANG; pactl list sinks | sed -n '/^Sink/,/^\s*Active Port:/p')"
+  DEFAULT_SINK=$(pacmd list-sinks | grep -m1 '* index:' | cut -b12-)
+  DEFAULT_SINK_INFO="$(echo "$SINK_LIST" | sed -n "/^Sink #${DEFAULT_SINK}$/,/^\s*Active Port:/p")"
 
 
   volume() {
@@ -50,15 +52,21 @@ tick(){
   }
 
   isMute(){
-    echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Mute:'  | sed -e 's,.*: \([a-z]*\).*,\1,' 
+    echo "$DEFAULT_SINK_INFO" | grep -m1 '^[[:space:]]Mute:'  | sed -e 's,.*: \([a-z]*\).*,\1,' 
   }
+
+  case "$(echo "$DEFAULT_SINK_INFO" | grep '^[[:space:]]Active Port:')" in
+    *head* )  OFFICON="";  ONICON=""  ;;
+    *hdmi* )  OFFICON="";  ONICON=""  ;;
+    * )       OFFICON="";  ONICON=""  ;;
+  esac
 
   #------------------------------------------------------------------------
 
 
   case "$(isMute)" in
-    yes ) echo " MUTE" ;;
-    * ) volume | awk '{print ($0 == "OFF") ? " "$0:" "$0}0' ;;
+    yes ) echo "$OFFICON MUTE" ;;
+    * ) volume | awk '{print ($0 == "OFF") ? "'$OFFICON' "$0:"'$ONICON' "$0}0' ;;
   esac
 }
 
