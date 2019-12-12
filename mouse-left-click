@@ -24,11 +24,13 @@ if ! [[ -z "$rofi_window_anchor" ]]; then
 	ROFI_OPTIONAL_ARGS+=( -theme-str '#window {anchor:'"$rofi_window_anchor"';}' )
 fi
 
-SINK_LIST="$(pactl list sinks | sed -n '/^Sink/,/^\s*Base Volume:/p')"
+# `pactl list sinks` shows sink properties with a mix of english language and local language
+# defined by LANG env var, so we unset the var to guarantee only the fallback language is used
+SINK_LIST="$(unset LANG; pactl list sinks | sed -n '/^Sink/,/^\s*Formats:/ { /^\s*Base Volume:/,/^\s*Active Port/ {/^\s*Active Port/p ;d} ; /^\s*Formats:/d ; p}')"
 DEFAULT_SINK=$(pacmd list-sinks | grep '* index:' | cut -b12-)
 
-CONTENT="$(echo "$SINK_LIST" | sed -e 's/^\t/  /g' -e 's/,\s\s*/,\n\t  /g')"
-let "WIDTH = $(wc -L <<< "$CONTENT") + 5"
+CONTENT="$(echo "$SINK_LIST" | sed -e 's/^\t/  /g' -e '/^\s*Volume:/,/^\s*Ports:/s/,\s\s*/,\n\t  /')"
+let "WIDTH = $(wc -L <<< "$CONTENT") * 12 / 10"
 OPTION_SELECTED=$(echo "$CONTENT" \
   | tr '\n' '\r' \
   | sed -e 's/\rSink/\nSink/g' -e "s|Sink #$DEFAULT_SINK\r|<b><u>Sink #$DEFAULT_SINK (default)</u></b>\r|g" \
