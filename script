@@ -71,9 +71,14 @@ tick(){
 }
 
 printInfo(){
+  THROTTLE_BY_SECONDS=0.05
   tick
   while read line ; do
     tick
+    # throttle to reduce cpu when using pavucontrol slider or the mouse wheel on the block
+    sleep $THROTTLE_BY_SECONDS
+    # clear stdin, calling the tick command if there were content in stdin
+    if read -t $THROTTLE_BY_SECONDS line; then while read -t $THROTTLE_BY_SECONDS line; do :; done; tick; fi
   done <  <(pactl subscribe | grep --line-buffered -E "sink|server")
 }
 
