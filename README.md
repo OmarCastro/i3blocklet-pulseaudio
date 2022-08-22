@@ -1,6 +1,8 @@
 # i3blocklet-pulseaudio
 i3 blocket that shows that controls the volume using pulse audio
  
+**Note: this repository is archieved in favour of [i3blocklet-pipewire-sink](https://github.com/OmarCastro/i3blocklet-pipewire-sink) due to pipewire being a replacement of pulseaudio**
+
 
 # Screenshots 
 
